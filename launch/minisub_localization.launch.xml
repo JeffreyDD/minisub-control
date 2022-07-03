@@ -1,0 +1,8 @@
+<launch>
+
+    <node pkg="tf2_ros" exec="static_transform_publisher" args="0 0 0.1 0 0 0 base_link imu_link"/>
+    <node pkg="robot_localization" exec="ekf_node">
+      <param from="/home/jeffrey/minisub/ros/ws/src/minisub_control/localization.yaml"/>
+    </node>
+
+</launch>
