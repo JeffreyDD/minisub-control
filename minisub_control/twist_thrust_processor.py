@@ -34,9 +34,9 @@ class TwistThrustProcessor(Node):
         self.inverse_thrust = True
         
     def twist_subscription_cb(self, msg):
-        self.get_logger().info('I heard: "%s"' % msg)
+        self.get_logger().debug('I heard: "%s"' % msg)
 
-        speed = numpy.clamp(msg.linear.x, -1, 1)
+        speed = numpy.clip(msg.linear.x, -1, 1)
         rotation = msg.angular.z
 
         if(self.inverse_thrust):
@@ -63,7 +63,7 @@ class TwistThrustProcessor(Node):
 
         self.thr_pwr_publisher_.publish(msg)
         
-        self.get_logger().info('Publishing: "%s"' % msg.data[0])
+        self.get_logger().debug('Publishing: "%s"' % msg.data[0])
         
 def main(args=None):
     rclpy.init(args=args)
