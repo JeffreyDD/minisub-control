@@ -10,8 +10,26 @@ class ThrusterType(enum.Enum):
     Horizontal = 1
     Vertical = 2
 
-class ThrusterConfig():
-    type = ThrusterType.Horizontal
+class ThrusterHorizontalPosition(enum.Enum):
+    Left = 1
+    Middle = 2
+    Right = 3
+
+class ThrusterVerticalPosition(enum.Enum):
+    Top = 1
+    Middle = 2
+    Bottom = 3
+
+def ThrusterConfig(thruster_type, h_pos, v_pos):
+    return {
+        # In future, this could automatically be determined based on rotation of transform
+        "thruster_type": thruster_type, 
+        # In future, these could automatically be determined based on position in relation to the center of the vessel
+        "position": { 
+            "horizontal" : h_pos,
+            "vertical": v_pos
+        }
+    }
 
 class TwistThrustProcessor(Node):
     def __init__(self):
@@ -30,12 +48,20 @@ class TwistThrustProcessor(Node):
             10
         )
 
+        self.thrusters = [
+            ThrusterConfig(ThrusterType.Horizontal, ThrusterHorizontalPosition.Left, ThrusterVerticalPosition.Bottom),
+            ThrusterConfig(ThrusterType.Horizontal, ThrusterHorizontalPosition.Right, ThrusterVerticalPosition.Bottom),
+            ThrusterConfig(ThrusterType.Vertical, ThrusterHorizontalPosition.Left, ThrusterVerticalPosition.Middle),
+            ThrusterConfig(ThrusterType.Vertical, ThrusterHorizontalPosition.Right, ThrusterVerticalPosition.Middle),
+        ]
+
         # FIXME: Use parameter, allow to be configured per thruster
         self.inverse_thrust = True
         
     def twist_subscription_cb(self, msg):
         self.get_logger().debug('I heard: "%s"' % msg)
 
+        # Horizontal calculations
         speed = numpy.clip(msg.linear.x, -1, 1)
         rotation = msg.angular.z
 
@@ -58,9 +84,27 @@ class TwistThrustProcessor(Node):
                 left = -rotation
                 right = rotation
         
-        msg = Float32MultiArray()
-        msg.data = [left, right]
+        # Vertical calculations
+        vspeed = numpy.clip(msg.linear.z, -1, 1)
 
+        # Setup & sent message
+        msg = Float32MultiArray()
+        for thruster_config in self.thrusters:
+            if thruster_config["thruster_type"] == ThrusterType.Horizontal:
+                if thruster_config["position"]["horizontal"] == ThrusterHorizontalPosition.Left:
+                    msg.data.append(left)
+                elif thruster_config["position"]["horizontal"] == ThrusterHorizontalPosition.Right:
+                    msg.data.append(right)
+                else:
+                    msg.data.append(0)
+            else:
+                if thruster_config["position"]["horizontal"] == ThrusterHorizontalPosition.Left:
+                    msg.data.append(vspeed)
+                elif thruster_config["position"]["horizontal"] == ThrusterHorizontalPosition.Right:
+                    msg.data.append(vspeed)
+                else:
+                    msg.data.append(0)
+                
         self.thr_pwr_publisher_.publish(msg)
         
         self.get_logger().debug('Publishing: "%s"' % msg.data[0])
