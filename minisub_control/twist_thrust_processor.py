@@ -36,27 +36,37 @@ class TwistThrustProcessor(Node):
     def twist_subscription_cb(self, msg):
         self.get_logger().debug('I heard: "%s"' % msg)
 
-        speed = numpy.clip(msg.linear.x, -1, 1)
-        rotation = msg.angular.z
+        speed = numpy.clip(msg.linear.x, -0.99, 0.99)
+        rotation = numpy.clip(msg.angular.z, -0.99, 0.99)
 
-        if(self.inverse_thrust):
-            speed = -speed
-        
+        self.get_logger().debug("Parsed speed: {} rotation: {}".format(speed, rotation))
+
         left = speed
         right = speed
 
         if(rotation != 0):
-            if(speed != 0):
+            if(speed > 0):
                 if(rotation > 0):
                     left = speed
-                    right = speed * rotation
+                    right = speed + (speed * rotation)
                 elif(rotation < 0):
-                    left = speed * -rotation
+                    left = speed + (speed * -rotation)
                     right = speed
+            elif(speed < 0):
+                if(rotation > 0):
+                    left = speed + (speed * rotation)
+                    right = speed
+                elif(rotation < 0):
+                    left = speed
+                    right = speed + (speed * -rotation)
             else:
                 # These come out way to high
-                left = -rotation
-                right = rotation
+                left = -rotation * 0.5
+                right = rotation * 0.5
+        
+        if(self.inverse_thrust):
+            left = -left
+            right = -right
         
         msg = Float32MultiArray()
         msg.data = [left, right]
